@@ -6,67 +6,67 @@ import cartRouter from "./routes/cartRouterDB.js";
 import cartRouterFS from "./routes/cartRouterFS.js";
 import viewsRouter from "./routes/viewsRouterDB.js";
 import viewsRouterFS from "./routes/viewsRouterFS.js";
+import messagesRouter from "./routes/messagesRouter.js";
+import __dirname from "./utils/utils.js";
+import path from "path";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
+import cors from "cors";
 import MONGO from "./utils/mongoDBConfig.js";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { updatedProducts, chat } from "./utils/socketUtils.js";
+import displayRoutes from "express-routemap";
 
-const app = express();
 const port = 8080;
-const MONGO_local = "mongodb://localhost:27017/ecommerce";
+
+// Inicializar express
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // Iniciar el servidor
 const httpServer = app.listen(port, () => {
+  displayRoutes(app);
   console.log(`Servidor iniciado en el puerto ${port}`);
 });
 
-const connection = mongoose.connect(MONGO, {
+// Conexión a la base de datos
+mongoose.connect(MONGO, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-export const io = new Server(httpServer);
-
+// Inicializar handlebars
 app.engine("handlebars", handlebars.engine());
 app.set("views", __dirname + "/views");
 app.set("view engine", "handlebars");
-app.use(express.static(__dirname + "/public"));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware para contenido estático
+app.use(express.static(path.join(__dirname + "./public")));
 
+// Rutas
 app.use("/api/products", productRouter);
 app.use("/api/fs/products", productRouterFS);
 
 app.use("/api/carts", cartRouter);
 app.use("/api/fs/carts", cartRouterFS);
 
+app.use("/api/messages", messagesRouter);
+
 app.use("/", viewsRouter);
 app.use("/fs", viewsRouterFS);
 
-const messages = [];
-httpServer.on("connection", (socket) => {
-  console.log("Nueva conexión websocket");
+// Inicializar socket.io
+const io = new Server(httpServer);
 
-  socket.on("updatedProducts", (products) => {
-    io.emit("updatedProducts", products);
-  });
+app.set("io", io);
 
-  socket.on('message', data => {
-    messages.push(data);
-    io.emit('messageLogs', messages);
-})
-
-socket.on('authenticated', data => {
-    socket.broadcast.emit('newUserConnected', data);
-})
+io.on("connection", (socket) => {
+  console.log("Nueva conexión websocket", socket.id);
+  updatedProducts(io);
+  chat(socket, io);
 
   socket.on("disconnect", () => {
     console.log("Cliente desconectado");
   });
-
 });
-

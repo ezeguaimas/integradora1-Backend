@@ -1,4 +1,3 @@
-import { io } from "../app.js";
 import ProductManager from "../dao/managers/productManagerFS.js";
 
 export async function updatedProducts() {

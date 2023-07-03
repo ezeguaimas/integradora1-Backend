@@ -1,6 +1,5 @@
 import Router from "express";
-import productsModel from "../dao/models/products.js";
-import { io } from "../app.js";
+import productsModel from "../dao/models/productsModel.js";
 const router = Router();
 
 router.get("/", async (req, res) => {
@@ -8,33 +7,23 @@ router.get("/", async (req, res) => {
   console.log(`Views Router ${products}`);
   res.render("home", {
     title: "E-Commerce Random",
-    products : products,
+    style: "/styles/products.css",
+    products: products,
   });
 });
 
 router.get("/realtimeproducts", async (req, res) => {
-  const products = await productsModel.find().lean();
   res.render("realTimeProducts", {
     title: "E-Commerce Random",
-    products: products,
+    style: "/styles/products.css",
   });
-  io.emit("updatedProducts", products);
 });
 
-
 router.get("/chat", async (req, res) => {
-  const messages = await productsModel.find().lean();
   res.render("chat", {
     title: "Chat",
     style: "/styles/chat.css",
-    script: "/js/chat.js",
   });
-})
-
-// router.get('/chat', (req, res) => {
-//   res.render('chat');
-// })
-
-
+});
 
 export default router;
